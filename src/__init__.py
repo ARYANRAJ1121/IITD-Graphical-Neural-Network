@@ -1,0 +1,2 @@
+"""MINGLE Coherent package."""
+

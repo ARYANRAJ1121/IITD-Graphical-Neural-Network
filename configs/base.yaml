@@ -1,0 +1,12 @@
+dataset:
+  fhir_dir: C:/Users/Aryan Raj/OneDrive/Desktop/coherent-11-07-2022/fhir
+
+data:
+  processed_dir: data/processed
+
+model:
+  hidden_dim: 128
+
+training:
+  seed: 42
+
