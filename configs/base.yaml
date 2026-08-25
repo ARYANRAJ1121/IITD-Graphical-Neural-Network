@@ -5,8 +5,20 @@ data:
   processed_dir: data/processed
 
 model:
-  hidden_dim: 128
+  hidden_dim: 48
+  num_heads: 4
+  num_layers: 2
+  num_classes: 25
+  structural_dim: 64
+  semantic_dim: 768
+  node_input_dim: 832
+  ffn_expansion: 4
+  pairnorm_eps: 1.0e-5
 
 training:
   seed: 42
-
+  patient_split: [0.70, 0.15, 0.15]
+  # Imbalance corrections are forbidden in Stage 3.
+  use_focal_loss: false
+  use_class_weights: false
+  use_oversampling: false

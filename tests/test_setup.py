@@ -10,7 +10,7 @@ def test_config_loads_correctly() -> None:
     config = load_config(PROJECT_ROOT / "configs" / "base.yaml")
     assert config["dataset"]["fhir_dir"]
     assert config["data"]["processed_dir"] == "data/processed"
-    assert config["model"]["hidden_dim"] == 128
+    assert config["model"]["hidden_dim"] == 48
     assert config["training"]["seed"] == 42
 
 
