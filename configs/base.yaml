@@ -22,3 +22,8 @@ training:
   use_focal_loss: false
   use_class_weights: false
   use_oversampling: false
+  # Baseline replication only. Not tuned.
+  epochs: 20
+  lr: 0.001
+  optimizer: adam
+  checkpoint_dir: data/processed/checkpoints

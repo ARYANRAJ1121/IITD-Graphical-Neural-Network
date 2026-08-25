@@ -46,6 +46,7 @@ class MingleModel(nn.Module):
         incidence_edge: torch.Tensor,
     ) -> dict[str, torch.Tensor]:
         num_nodes = node_states.size(0)
+        num_real = note_semantics.size(0)
         n_aug = torch.cat([note_semantics, concept_semantics], dim=0)
         h_e = self.mlp1(n_aug)
         num_hyperedges = h_e.size(0)
@@ -63,7 +64,7 @@ class MingleModel(nn.Module):
                 num_nodes,
                 num_hyperedges,
             )
-            layer_real_states.append(e_e[: self.num_real_hyperedges])
+            layer_real_states.append(e_e[:num_real])
 
         jk = torch.cat(layer_real_states, dim=-1)
         logits = self.classifier(jk)
