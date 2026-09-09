@@ -70,6 +70,7 @@ def compute_metrics(y_true: np.ndarray, logits: np.ndarray, probs: np.ndarray | 
             + (1 - y) * np.log(np.clip(1.0 - probs, 1e-8, 1.0))
         ).mean()
     )
+    n_pos_pred = int(pred.sum())
     return {
         "n_examples": n,
         "n_classes": c,
@@ -80,6 +81,8 @@ def compute_metrics(y_true: np.ndarray, logits: np.ndarray, probs: np.ndarray | 
         "micro_auprc": micro_auprc,
         "macro_auprc": macro_auprc,
         "classes_with_auroc": len(defined_auroc),
+        "n_positive_predictions": n_pos_pred,
+        "pct_positive_predictions": 100.0 * n_pos_pred / pred.size if pred.size else 0.0,
         "per_class": per_class,
     }
 
