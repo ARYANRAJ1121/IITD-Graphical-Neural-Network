@@ -1,4 +1,4 @@
-# Stage 1 Dataset Profile
+# Dataset profile
 
 ## 1. Dataset Overview
 
@@ -105,8 +105,8 @@ No complaints.
 
 # History of Present Illness
 Abe6 | YES | Primary text source, encounter-linked through context.encounter. |
-| concept semantic embedding C_v | Not present in raw Coherent; must be derived from codes/displays |  | NO | Requires Stage 2+ embedding generation. |
-| clinical note embedding N_e | Not present in raw Coherent; must be derived from note text |  | NO | Requires Stage 2+ embedding generation. |
+| concept semantic embedding C_v | Not present in raw Coherent; must be derived from codes/displays |  | NO | Requires later hypergraph / embedding embedding generation. |
+| clinical note embedding N_e | Not present in raw Coherent; must be derived from note text |  | NO | Requires later hypergraph / embedding embedding generation. |
 
 ## 12. MIMIC-III Compatibility
 
@@ -118,7 +118,7 @@ Abe6 | YES | Primary text source, encounter-linked through context.encounter. |
 | clinical note text | DocumentReference.content[].attachment.data | YES | Every encounter had an encounter-linked DocumentReference note. | Decode base64 note text during preprocessing. |
 | patient longitudinal information | One Patient bundle with many Encounters and dated resources | YES | 1278 bundles each contained one longitudinal patient record. | Sort encounters and encounter-linked resources temporally. |
 | temporal information | Encounter.period, Observation.effectiveDateTime, MedicationRequest.authoredOn, etc. | YES | Multiple timestamp fields exist across core resources. | Define a canonical visit timestamp strategy. |
-| prediction target/label availability | No single direct MINGLE target field in raw FHIR bundles | PARTIAL | No one-step label field was identified during profiling. | Explicitly engineer the downstream task label in Stage 2. |
+| prediction target/label availability | No single direct MINGLE target field in raw FHIR bundles | PARTIAL | No one-step label field was identified during profiling. | Explicitly engineer the downstream task label in Hypergraph construction. |
 
 ## 13. Missing Information
 
@@ -127,7 +127,7 @@ Abe6 | YES | Primary text source, encounter-linked through context.encounter. |
 - Some medication concepts require following `MedicationRequest.medicationReference -> Medication`.
 - External practitioner, organization, and location references are identifier-based rather than local resource IDs.
 
-## 14. Recommended Adaptations for Stage 2
+## 14. Recommended Adaptations for Hypergraph construction
 
 - Resolve all `urn:uuid` bundle-local references during extraction.
 - Use `Encounter.id` as the visit/hyperedge anchor.

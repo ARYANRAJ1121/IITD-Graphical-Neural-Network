@@ -49,7 +49,7 @@ def main():
                     
     # Generate Report
     report = [
-        "# Stage 3 Label Feasibility Analysis",
+        "# Vanilla BCE Label Feasibility Analysis",
         "",
         "## Dataset Statistics",
         f"- Total Encounters (Hyperedges): {total_encounters}",
@@ -78,10 +78,10 @@ def main():
     else:
         report.append("**FEASIBLE:** The target labels have sufficient representation across the dataset to train a meaningful prediction head without encountering zero-class errors.")
         
-    with open('experiments/stage3_label_feasibility.md', 'w') as f:
+    with open('experiments/label_feasibility.md', 'w') as f:
         f.write("\n".join(report))
         
-    print("Report saved to experiments/stage3_label_feasibility.md")
+    print("Report saved to experiments/label_feasibility.md")
 
 if __name__ == '__main__':
     main()

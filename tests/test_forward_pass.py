@@ -1,9 +1,9 @@
 from torch import nn
 
-from src.data.stage3_bundle import make_synthetic_bundle
+from src.data.processed_bundle import make_synthetic_bundle
 from src.models.mingle import MingleModel
 from src.models.pma import PMA
-from src.training.validate_stage3 import masked_bce_with_logits, run_forward
+from src.training.validate_architecture import masked_bce_with_logits, run_forward
 
 
 def test_pma_is_custom() -> None:

@@ -1,8 +1,8 @@
-# Stage 4A: Weighted BCE
+# Weighted BCE
 
 Isolated loss-function experiment. Architecture, graph, embeddings, labels, split, and seed are frozen.
 Positive-class weights from **training pairs only**. No focal loss, oversampling, or threshold tuning during training.
-F1 uses the paper's 0.5 threshold. Checkpoint selected by **unweighted** validation BCE (same rule as Stage 3).
+F1 uses the paper's 0.5 threshold. Checkpoint selected by **unweighted** validation BCE (same rule as Vanilla BCE).
 
 ## Setup
 
@@ -16,7 +16,7 @@ F1 uses the paper's 0.5 threshold. Checkpoint selected by **unweighted** validat
 - hardware: `AMD64 Family 25 Model 124 Stepping 0, AuthenticAMD | cuda=False cpu`
 - runtime_sec: `1581.9`
 - best epoch: `20` (lowest unweighted val BCE)
-- checkpoint: `data\processed\checkpoints\stage4a_weighted_bce_best.pt`
+- checkpoint: `data\processed\checkpoints\weighted_bce_best.pt`
 
 ## Train-only class weights (`n_neg / n_pos`)
 
@@ -190,9 +190,9 @@ F1 uses the paper's 0.5 threshold. Checkpoint selected by **unweighted** validat
 | 24 | `312681000` | Bone density scan (procedure) | 0.8526019911678322 | 0.1764875866822848 | 0.0258 | 0.0131 | 0.6988 | 83 |
 | 25 | `433112001` | Percutaneous mechanical thrombectomy of portal vein using fluoroscopic guidance | 0.8344467367455873 | 0.015480166202115732 | 0.0242 | 0.0123 | 0.7356 | 87 |
 
-## Comparison vs Stage 3 vanilla BCE (test)
+## Comparison vs Vanilla BCE vanilla BCE (test)
 
-| Metric | Stage 3 vanilla | Stage 4A weighted | Δ |
+| Metric | Vanilla BCE vanilla | Weighted BCE weighted | Δ |
 | --- | ---: | ---: | ---: |
 | BCE | 0.062200 | 0.415957 | 0.353757 |
 | micro-AUPRC | 0.157836 | 0.150431 | -0.007406 |
@@ -234,10 +234,10 @@ F1 uses the paper's 0.5 threshold. Checkpoint selected by **unweighted** validat
 
 - dialysis test AUPRC: `0.8488636168144681`
 - mean AUPRC of other 24 classes: `0.21114955565310553`
-- classes with AUPRC > Stage 3: `25/25`
+- classes with AUPRC > Vanilla BCE: `25/25`
 - dialysis AUPRC / macro-AUPRC: `3.59`
 
-AUPRC is **more distributed** than Stage 3: dialysis no longer accounts for nearly all ranking mass.
+AUPRC is **more distributed** than Vanilla BCE: dialysis no longer accounts for nearly all ranking mass.
 
 ## Numerical issues
 

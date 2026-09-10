@@ -9,12 +9,12 @@ import numpy as np
 import torch
 from torch import nn
 
-from src.data.stage3_bundle import Stage3Bundle
-from src.data.stage3_labels import FROZEN_TOP25
+from src.data.processed_bundle import ProcessedBundle
+from src.data.next_visit_labels import FROZEN_TOP25
 from src.evaluation.metrics import compute_metrics
 from src.graph.splits import build_eval_graph, build_split_graph, patient_encounter_index
 from src.models.mingle import MingleModel
-from src.training.train_stage3 import (
+from src.training.train_vanilla_bce import (
     _check_finite,
     _device,
     _forward,
@@ -22,9 +22,9 @@ from src.training.train_stage3 import (
     _split_logits,
     _to_device,
 )
-from src.training.validate_stage3 import masked_bce_with_logits
+from src.training.validate_architecture import masked_bce_with_logits
 
-STAGE3_TEST = {
+VANILLA_BCE_TEST = {
     "bce": 0.062200,
     "micro_f1": 0.0,
     "macro_f1": 0.0,
@@ -46,7 +46,7 @@ STAGE3_TEST = {
 }
 
 
-STAGE4A20_TEST = {
+WEIGHTED_BCE_20_TEST = {
     "bce": 0.415957,
     "micro_f1": 0.1029,
     "macro_f1": 0.1249,
@@ -62,8 +62,8 @@ def _append_convergence_comparison(path: Path, payload: dict) -> None:
     t = payload["test_metrics"]
     rest = [row["auprc"] for row in t["per_class"][1:] if row["auprc"] is not None]
     mean_rest = float(np.mean(rest)) if rest else float("nan")
-    s3 = STAGE3_TEST
-    s4 = STAGE4A20_TEST
+    s3 = VANILLA_BCE_TEST
+    s4 = WEIGHTED_BCE_20_TEST
     n_gt_s3 = sum(
         1
         for i, row in enumerate(t["per_class"])
@@ -71,9 +71,9 @@ def _append_convergence_comparison(path: Path, payload: dict) -> None:
     )
     extra = [
         "",
-        "## Comparison vs Stage 3 and Stage 4A (20-epoch)",
+        "## Comparison vs Vanilla BCE and Weighted BCE (20-epoch)",
         "",
-        "| Metric | Stage 3 vanilla | 4A 20-epoch | 4A converged | vs S3 | vs 4A-20 |",
+        "| Metric | Vanilla BCE vanilla | Weighted BCE 20-epoch | Weighted BCE converged | vs Vanilla BCE | vs WBCE-20 |",
         "| --- | ---: | ---: | ---: | ---: | ---: |",
         f"| unweighted test BCE | {s3['bce']:.6f} | {s4['bce']:.6f} | {t['bce']:.6f} | {t['bce']-s3['bce']:.6f} | {t['bce']-s4['bce']:.6f} |",
         f"| micro-AUPRC | {s3['micro_auprc']:.6f} | {s4['micro_auprc']:.6f} | {t['micro_auprc']:.6f} | {t['micro_auprc']-s3['micro_auprc']:.6f} | {t['micro_auprc']-s4['micro_auprc']:.6f} |",
@@ -83,13 +83,13 @@ def _append_convergence_comparison(path: Path, payload: dict) -> None:
         f"| macro-F1 @0.5 | {s3['macro_f1']:.4f} | {s4['macro_f1']:.4f} | {t['macro_f1']:.4f} | {t['macro_f1']-s3['macro_f1']:.4f} | {t['macro_f1']-s4['macro_f1']:.4f} |",
         f"| mean AUPRC other 24 | — | {s4['mean_other24']:.4f} | {mean_rest:.4f} | — | {mean_rest-s4['mean_other24']:.4f} |",
         "",
-        f"- classes with test AUPRC > Stage 3: `{n_gt_s3}/25`",
+        f"- classes with test AUPRC > Vanilla BCE: `{n_gt_s3}/25`",
         f"- dialysis AUPRC: `{t['per_class'][0]['auprc']}`",
         "",
         "## Convergence questions",
         "",
         f"- A. macro-AUPRC still ≥ 0.20? **{'yes' if t['macro_auprc'] and t['macro_auprc'] >= 0.20 else 'no'}** (`{t['macro_auprc']}`)",
-        f"- B. most classes still above Stage 3 AUPRC? **{'yes' if n_gt_s3 >= 13 else 'no'}** (`{n_gt_s3}/25`)",
+        f"- B. most classes still above Vanilla BCE AUPRC? **{'yes' if n_gt_s3 >= 13 else 'no'}** (`{n_gt_s3}/25`)",
         f"- C. distributed vs dialysis-only? mean other-24 AUPRC `{mean_rest:.4f}` vs dialysis `{t['per_class'][0]['auprc']}`",
         "",
     ]
@@ -117,8 +117,8 @@ def masked_weighted_bce(
     return criterion(logits[pair_mask], labels[pair_mask])
 
 
-def write_stage4a_report(path: Path, payload: dict) -> None:
-    s3 = STAGE3_TEST
+def write_weighted_bce_report(path: Path, payload: dict) -> None:
+    s3 = VANILLA_BCE_TEST
     t = payload["test_metrics"]
     v = payload["val_metrics"]
     tr = payload["train_metrics"]
@@ -126,11 +126,11 @@ def write_stage4a_report(path: Path, payload: dict) -> None:
     dialysis_auprc = t["per_class"][0]["auprc"]
     rest = [row["auprc"] for row in t["per_class"][1:] if row["auprc"] is not None]
     lines = [
-        f"# Stage 4A: Weighted BCE ({payload.get('experiment', 'stage4a_weighted_bce')})",
+        f"# Weighted BCE ({payload.get('experiment', 'weighted_bce')})",
         "",
         "Isolated loss-function experiment. Architecture, graph, embeddings, labels, split, and seed are frozen.",
         "Positive-class weights from **training pairs only**. No focal loss, oversampling, or threshold tuning during training.",
-        "F1 uses the paper's 0.5 threshold. Checkpoint selected by **unweighted** validation BCE (same rule as Stage 3).",
+        "F1 uses the paper's 0.5 threshold. Checkpoint selected by **unweighted** validation BCE (same rule as Vanilla BCE).",
         "",
         "## Setup",
         "",
@@ -203,9 +203,9 @@ def write_stage4a_report(path: Path, payload: dict) -> None:
     lines.extend(
         [
             "",
-            "## Comparison vs Stage 3 vanilla BCE (test)",
+            "## Comparison vs Vanilla BCE vanilla BCE (test)",
             "",
-            "| Metric | Stage 3 vanilla | Stage 4A weighted | Δ |",
+            "| Metric | Vanilla BCE vanilla | Weighted BCE weighted | Δ |",
             "| --- | ---: | ---: | ---: |",
             f"| BCE | {s3['bce']:.6f} | {t['bce']:.6f} | {t['bce'] - s3['bce']:.6f} |",
             f"| micro-AUPRC | {s3['micro_auprc']:.6f} | {t['micro_auprc']:.6f} | {t['micro_auprc'] - s3['micro_auprc']:.6f} |",
@@ -236,7 +236,7 @@ def write_stage4a_report(path: Path, payload: dict) -> None:
             "",
             f"- dialysis test AUPRC: `{dialysis_auprc}`",
             f"- mean AUPRC of other 24 classes: `{float(np.mean(rest)) if rest else 'NA'}`",
-            f"- classes with AUPRC > Stage 3: `{n_improve_auprc}/25`",
+            f"- classes with AUPRC > Vanilla BCE: `{n_improve_auprc}/25`",
             f"- dialysis AUPRC / macro-AUPRC: `{dial_share:.2f}`",
             "",
             payload["dominance_note"],
@@ -250,20 +250,20 @@ def write_stage4a_report(path: Path, payload: dict) -> None:
     path.write_text("\n".join(lines), encoding="utf-8")
 
 
-def train_stage4a(
+def train_weighted_bce(
     config: dict,
-    bundle: Stage3Bundle,
+    bundle: ProcessedBundle,
     report_path: Path,
     *,
     epochs: int | None = None,
-    checkpoint_name: str = "stage4a_weighted_bce_best.pt",
-    history_name: str = "stage4a_history.json",
+    checkpoint_name: str = "weighted_bce_best.pt",
+    history_name: str = "weighted_bce_history.json",
     early_stop_patience: int | None = None,
-    experiment_name: str = "stage4a_weighted_bce",
-    compare_stage4a20: bool = False,
+    experiment_name: str = "weighted_bce",
+    compare_weighted_bce_20: bool = False,
 ) -> dict:
     if bundle.source != "processed":
-        raise RuntimeError("Refusing Stage 4A on synthetic data.")
+        raise RuntimeError("Refusing Weighted BCE on synthetic data.")
     frozen = config["model"]
     if (
         frozen["hidden_dim"] != 48
@@ -278,7 +278,7 @@ def train_stage4a(
     torch.manual_seed(seed)
     np.random.seed(seed)
     print(
-        f"Stage 4A weighted BCE on {device}. Frozen architecture. experiment={experiment_name}",
+        f"Weighted BCE weighted BCE on {device}. Frozen architecture. experiment={experiment_name}",
         flush=True,
     )
 
@@ -396,7 +396,7 @@ def train_stage4a(
     if dial > 5 * mean_rest:
         dominance = "Gains, if any, remain **dialysis-dominated**: dialysis AUPRC still dwarfs the other 24 classes."
     else:
-        dominance = "AUPRC is **more distributed** than Stage 3: dialysis no longer accounts for nearly all ranking mass."
+        dominance = "AUPRC is **more distributed** than Vanilla BCE: dialysis no longer accounts for nearly all ranking mass."
 
     payload = {
         "seed": seed,
@@ -426,8 +426,8 @@ def train_stage4a(
         "dominance_note": dominance,
     }
     report_path.parent.mkdir(parents=True, exist_ok=True)
-    write_stage4a_report(report_path, payload)
+    write_weighted_bce_report(report_path, payload)
     (checkpoint_dir / history_name).write_text(json.dumps(history, indent=2), encoding="utf-8")
-    if compare_stage4a20:
+    if compare_weighted_bce_20:
         _append_convergence_comparison(report_path, payload)
     return payload

@@ -5,8 +5,8 @@ from pathlib import Path
 import torch
 from torch import nn
 
-from src.data.stage3_bundle import Stage3Bundle, example_index
-from src.data.stage3_labels import FROZEN_TOP25
+from src.data.processed_bundle import ProcessedBundle, example_index
+from src.data.next_visit_labels import FROZEN_TOP25
 from src.models.mingle import MingleModel
 
 PRODUCTION = {
@@ -22,7 +22,7 @@ PRODUCTION = {
     "num_layers": 2,
     "num_classes": 25,
     "jk_dim": 96,
-    "valid_pairs_stage3": 142668,
+    "valid_pairs_next_visit": 142668,
     "terminal_visits": 1278,
 }
 
@@ -53,7 +53,7 @@ def prevalence_rows(labels: torch.Tensor, pair_mask: torch.Tensor) -> list[tuple
 def write_validation_report(
     path: Path,
     *,
-    bundle: Stage3Bundle,
+    bundle: ProcessedBundle,
     model: MingleModel,
     outputs: dict[str, torch.Tensor],
     loss: torch.Tensor,
@@ -67,7 +67,7 @@ def write_validation_report(
     valid_pairs = int(bundle.pair_mask.sum().item())
 
     lines = [
-        "# Stage 3 Implementation Validation Report",
+        "# Architecture validation report",
         "",
         "Generated after the frozen mathematical spec (loss = MINGLE Eq. (4) / `BCEWithLogitsLoss`).",
         "No focal loss, class weights, or oversampling.",
@@ -76,7 +76,7 @@ def write_validation_report(
         f"- Processed Coherent tensors loaded: `{processed_loaded}`",
         f"- Forward-pass loss (masked BCEWithLogitsLoss): `{loss.item():.6f}`",
         "",
-        "## Production hypergraph (frozen Stage 2 / Stage 3 spec)",
+        "## Production hypergraph (frozen construction spec)",
         "",
         f"- Real encounter hyperedges: **{p['num_real_hyperedges']}**",
         f"- Self-loop hyperedges: **{p['num_self_loop_hyperedges']}**",
@@ -166,9 +166,9 @@ def write_validation_report(
     else:
         lines.extend(
             [
-                f"- Production valid pairs (Stage 3 feasibility): **{p['valid_pairs_stage3']}**",
+                f"- Production valid pairs (label feasibility): **{p['valid_pairs_next_visit']}**",
                 f"- Production terminal visits excluded: **{p['terminal_visits']}**",
-                "- Exact train/val/test counts require `data/processed` Stage 2 artifacts (currently missing).",
+                "- Exact train/val/test counts require `data/processed` tensors (currently missing).",
                 f"- Forward-test split counts: train={split_counts.get('train', 0)}, val={split_counts.get('val', 0)}, test={split_counts.get('test', 0)}",
             ]
         )
@@ -188,7 +188,7 @@ def write_validation_report(
         lines.extend(
             [
                 "",
-                "Production prevalence (feasibility audit, 142,668 pairs) is unchanged; see `experiments/stage3_label_feasibility.md`.",
+                "Production prevalence (feasibility audit, 142,668 pairs) is unchanged; see `experiments/label_feasibility.md`.",
             ]
         )
 
@@ -214,7 +214,7 @@ def write_validation_report(
 
 
 @torch.no_grad()
-def run_forward(bundle: Stage3Bundle) -> tuple[MingleModel, dict[str, torch.Tensor], torch.Tensor]:
+def run_forward(bundle: ProcessedBundle) -> tuple[MingleModel, dict[str, torch.Tensor], torch.Tensor]:
     model = MingleModel(
         node_input_dim=bundle.node_states.size(1),
         semantic_dim=bundle.note_semantics.size(1),

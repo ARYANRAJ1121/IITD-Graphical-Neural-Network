@@ -1,8 +1,8 @@
 from pathlib import Path
 
 from src.config import load_config
-from src.data.stage3_bundle import load_processed_bundle
-from src.training.train_stage4a import train_stage4a
+from src.data.processed_bundle import load_processed_bundle
+from src.training.train_focal_loss import train_focal_loss
 
 
 def main() -> None:
@@ -13,18 +13,16 @@ def main() -> None:
         tuple(config["training"]["patient_split"]),
     )
     if bundle is None:
-        raise SystemExit("Stage 2 processed tensors are missing.")
-    report = Path("experiments/stage4a_weighted_bce_convergence_report.md")
-    payload = train_stage4a(
+        raise SystemExit("Processed tensors are missing.")
+    report = Path("experiments/focal_loss_report.md")
+    payload = train_focal_loss(
         config,
         bundle,
         report,
         epochs=50,
-        checkpoint_name="stage4a_converged_best.pt",
-        history_name="stage4a_converged_history.json",
+        checkpoint_name="focal_loss_best.pt",
+        history_name="focal_loss_history.json",
         early_stop_patience=10,
-        experiment_name="stage4a_weighted_bce_convergence",
-        compare_stage4a20=True,
     )
     print(f"best_epoch={payload['best_epoch']} checkpoint={payload['checkpoint']}")
     print(f"early_stopping={payload['early_stopping']}")

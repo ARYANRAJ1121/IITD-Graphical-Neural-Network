@@ -8,12 +8,12 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from src.data.stage3_bundle import Stage3Bundle
+from src.data.processed_bundle import ProcessedBundle
 from src.evaluation.metrics import compute_metrics
 from src.graph.splits import build_eval_graph, build_split_graph, patient_encounter_index
 from src.models.mingle import MingleModel
 from src.training.focal import FOCAL_ALPHA, FOCAL_GAMMA, masked_binary_focal_loss
-from src.training.train_stage3 import (
+from src.training.train_vanilla_bce import (
     _check_finite,
     _device,
     _forward,
@@ -21,11 +21,11 @@ from src.training.train_stage3 import (
     _split_logits,
     _to_device,
 )
-from src.training.train_stage4a import STAGE3_TEST
-from src.training.validate_stage3 import masked_bce_with_logits
+from src.training.train_weighted_bce import VANILLA_BCE_TEST
+from src.training.validate_architecture import masked_bce_with_logits
 
-# Stage 4A 50-epoch converged test numbers (do not overwrite 4A artifacts).
-STAGE4A50_TEST = {
+# Weighted BCE 50-epoch converged test numbers (do not overwrite 4A artifacts).
+WEIGHTED_BCE_50_TEST = {
     "bce": 0.346839,
     "micro_f1": 0.1172,
     "macro_f1": 0.1374,
@@ -97,9 +97,9 @@ STAGE4A50_TEST = {
 }
 
 
-def write_stage4b_report(path: Path, payload: dict) -> None:
-    s3 = STAGE3_TEST
-    s4 = STAGE4A50_TEST
+def write_focal_loss_report(path: Path, payload: dict) -> None:
+    s3 = VANILLA_BCE_TEST
+    s4 = WEIGHTED_BCE_50_TEST
     t = payload["test_metrics"]
     v = payload["val_metrics"]
     tr = payload["train_metrics"]
@@ -140,7 +140,7 @@ def write_stage4b_report(path: Path, payload: dict) -> None:
     elif worse_than_4a:
         conclusion = (
             "Focal Loss **does not improve** over Weighted BCE: both macro-AUPRC and "
-            "micro-AUPRC are lower than Stage 4A."
+            "micro-AUPRC are lower than Weighted BCE."
         )
     else:
         conclusion = (
@@ -150,12 +150,12 @@ def write_stage4b_report(path: Path, payload: dict) -> None:
         )
 
     lines = [
-        "# Stage 4B: Focal Loss",
+        "# Focal loss",
         "",
         "## 1. Objective",
         "",
         "Test whether **Focal Loss alone** improves next-visit 25-label ranking over "
-        "Stage 3 vanilla BCE and Stage 4A class-weighted BCE, with every other experimental "
+        "Vanilla BCE vanilla BCE and Weighted BCE class-weighted BCE, with every other experimental "
         "condition held fixed.",
         "",
         "## 2. Exact experimental setup",
@@ -175,13 +175,13 @@ def write_stage4b_report(path: Path, payload: dict) -> None:
         f"- loss: binary focal, gamma=`{payload['focal_gamma']}`, alpha=`{payload['focal_alpha']}`",
         f"- class-weighted BCE: `{payload['use_class_weights']}`",
         "",
-        "Checkpoint selection matches Stage 4A: **unweighted validation BCE**, not focal loss "
+        "Checkpoint selection matches Weighted BCE: **unweighted validation BCE**, not focal loss "
         "and not test metrics. F1 uses threshold 0.5. Full-graph training (no mini-batches).",
         "",
-        "## 3. What was changed from Stage 4A",
+        "## 3. What was changed from Weighted BCE",
         "",
-        "The **training loss only**. Stage 4A used `BCEWithLogitsLoss(pos_weight=n_neg/n_pos)` "
-        "from train pairs. Stage 4B uses binary focal loss on the same masked cells, with "
+        "The **training loss only**. Weighted BCE used `BCEWithLogitsLoss(pos_weight=n_neg/n_pos)` "
+        "from train pairs. Focal loss uses binary focal loss on the same masked cells, with "
         f"**gamma={payload['focal_gamma']}** (Lin et al. 2017 default) and **alpha={payload['focal_alpha']}** "
         "(no class-balancing term). These values were chosen **a priori**, not tuned on val or test.",
         "",
@@ -256,9 +256,9 @@ def write_stage4b_report(path: Path, payload: dict) -> None:
     lines.extend(
         [
             "",
-            "## 6. Stage 3 vs Stage 4A vs Stage 4B (test)",
+            "## 6. Vanilla BCE vs weighted BCE vs focal loss (test)",
             "",
-            "| Metric | Stage 3 Vanilla BCE | Stage 4A Weighted BCE (50-ep) | Stage 4B Focal | Δ vs S3 | Δ vs 4A |",
+            "| Metric | Vanilla BCE Vanilla BCE | Weighted BCE Weighted BCE (50-ep) | Focal loss Focal | Δ vs Vanilla BCE | Δ vs Weighted BCE |",
             "| --- | ---: | ---: | ---: | ---: | ---: |",
             f"| unweighted BCE | {s3['bce']:.6f} | {s4['bce']:.6f} | {t['bce']:.6f} | {t['bce']-s3['bce']:.6f} | {t['bce']-s4['bce']:.6f} |",
             f"| micro-AUPRC | {s3['micro_auprc']:.6f} | {s4['micro_auprc']:.6f} | {t['micro_auprc']:.6f} | {d_micro_auprc_s3:.6f} | {d_micro_auprc_s4:.6f} |",
@@ -268,19 +268,19 @@ def write_stage4b_report(path: Path, payload: dict) -> None:
             f"| macro-F1 @0.5 | {s3['macro_f1']:.4f} | {s4['macro_f1']:.4f} | {t['macro_f1']:.4f} | {t['macro_f1']-s3['macro_f1']:.4f} | {t['macro_f1']-s4['macro_f1']:.4f} |",
             f"| # pos preds @0.5 | {s3['n_positive_predictions']} | {s4['n_positive_predictions']} | {t.get('n_positive_predictions', 0)} | | |",
             "",
-            f"- change in macro-AUPRC vs Stage 3: `{d_macro_auprc_s3:.6f}`",
-            f"- change in macro-AUPRC vs Stage 4A: `{d_macro_auprc_s4:.6f}`",
-            f"- change in micro-AUPRC vs Stage 3: `{d_micro_auprc_s3:.6f}`",
-            f"- change in micro-AUPRC vs Stage 4A: `{d_micro_auprc_s4:.6f}`",
-            f"- change in macro-AUROC vs Stage 3: `{d_macro_auroc_s3:.6f}`",
-            f"- change in macro-AUROC vs Stage 4A: `{d_macro_auroc_s4:.6f}`",
-            f"- classes with AUPRC > Stage 3: `{n_gt_s3}/25`",
-            f"- classes with AUPRC > Stage 4A: `{n_gt_s4}/25`",
-            f"- classes with AUPRC < Stage 4A: `{n_lt_s4}/25`",
+            f"- change in macro-AUPRC vs Vanilla BCE: `{d_macro_auprc_s3:.6f}`",
+            f"- change in macro-AUPRC vs Weighted BCE: `{d_macro_auprc_s4:.6f}`",
+            f"- change in micro-AUPRC vs Vanilla BCE: `{d_micro_auprc_s3:.6f}`",
+            f"- change in micro-AUPRC vs Weighted BCE: `{d_micro_auprc_s4:.6f}`",
+            f"- change in macro-AUROC vs Vanilla BCE: `{d_macro_auroc_s3:.6f}`",
+            f"- change in macro-AUROC vs Weighted BCE: `{d_macro_auroc_s4:.6f}`",
+            f"- classes with AUPRC > Vanilla BCE: `{n_gt_s3}/25`",
+            f"- classes with AUPRC > Weighted BCE: `{n_gt_s4}/25`",
+            f"- classes with AUPRC < Weighted BCE: `{n_lt_s4}/25`",
             "",
             "## 7. Per-class analysis",
             "",
-            "| Rank | Name | S3 AUPRC | 4A AUPRC | 4B AUPRC | vs S3 | vs 4A |",
+            "| Rank | Name | S3 AUPRC | 4A AUPRC | 4B AUPRC | vs Vanilla BCE | vs Weighted BCE |",
             "| ---: | --- | ---: | ---: | ---: | ---: | ---: |",
         ]
     )
@@ -303,7 +303,7 @@ def write_stage4b_report(path: Path, payload: dict) -> None:
             payload["dominance_note"],
             "",
             "Checkpointing uses unweighted BCE, which is a poor proxy for ranking under sparsity "
-            "(Stage 3 already showed this). Differences vs 4A are therefore also affected by "
+            "(Vanilla BCE already showed this). Differences vs Weighted BCE are therefore also affected by "
             "where the unweighted-BCE minimum lands, not only by the training loss.",
             "",
             "## 9. Limitations",
@@ -312,7 +312,7 @@ def write_stage4b_report(path: Path, payload: dict) -> None:
             "- gamma/alpha were not swept; only the Lin et al. focusing default is tested.",
             "- Focal Loss is not combined with pos_weight; a joint recipe is a different experiment.",
             "- F1@0.5 remains a harsh operating point under class imbalance.",
-            "- Stage 3/4A checkpoints were not retrained; comparison uses stored test metrics.",
+            "- vanilla BCE / weighted BCE checkpoints were not retrained; comparison uses stored test metrics.",
             "",
             "## 10. Conclusion",
             "",
@@ -327,18 +327,18 @@ def write_stage4b_report(path: Path, payload: dict) -> None:
     path.write_text("\n".join(lines), encoding="utf-8")
 
 
-def train_stage4b(
+def train_focal_loss(
     config: dict,
-    bundle: Stage3Bundle,
+    bundle: ProcessedBundle,
     report_path: Path,
     *,
     epochs: int = 50,
-    checkpoint_name: str = "stage4b_focal_best.pt",
-    history_name: str = "stage4b_focal_history.json",
+    checkpoint_name: str = "focal_loss_best.pt",
+    history_name: str = "focal_loss_history.json",
     early_stop_patience: int = 10,
 ) -> dict:
     if bundle.source != "processed":
-        raise RuntimeError("Refusing Stage 4B on synthetic data.")
+        raise RuntimeError("Refusing Focal loss on synthetic data.")
     frozen = config["model"]
     if (
         frozen["hidden_dim"] != 48
@@ -353,7 +353,7 @@ def train_stage4b(
     torch.manual_seed(seed)
     np.random.seed(seed)
     print(
-        f"Stage 4B focal loss on {device}. gamma={FOCAL_GAMMA} alpha={FOCAL_ALPHA}. "
+        f"Focal loss focal loss on {device}. gamma={FOCAL_GAMMA} alpha={FOCAL_ALPHA}. "
         "No class-weighted BCE. Frozen architecture.",
         flush=True,
     )
@@ -433,7 +433,7 @@ def train_stage4b(
                     "val_bce": best_val,
                     "focal_gamma": FOCAL_GAMMA,
                     "focal_alpha": FOCAL_ALPHA,
-                    "experiment": "stage4b_focal",
+                    "experiment": "focal_loss",
                 },
                 best_path,
             )
@@ -474,14 +474,14 @@ def train_stage4b(
         )
     else:
         dominance = (
-            "AUPRC is **more distributed** than Stage 3: dialysis no longer accounts for nearly all ranking mass."
+            "AUPRC is **more distributed** than Vanilla BCE: dialysis no longer accounts for nearly all ranking mass."
         )
 
     payload = {
         "seed": seed,
         "split": config["training"]["patient_split"],
         "epochs": epochs,
-        "experiment": "stage4b_focal",
+        "experiment": "focal_loss",
         "lr": config["training"]["lr"],
         "param_count": param_count,
         "device": str(device),
@@ -504,6 +504,6 @@ def train_stage4b(
         "dominance_note": dominance,
     }
     report_path.parent.mkdir(parents=True, exist_ok=True)
-    write_stage4b_report(report_path, payload)
+    write_focal_loss_report(report_path, payload)
     (checkpoint_dir / history_name).write_text(json.dumps(history, indent=2), encoding="utf-8")
     return payload

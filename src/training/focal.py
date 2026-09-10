@@ -6,7 +6,7 @@ from torch.nn import functional as F
 
 # Lin et al., "Focal Loss for Dense Object Detection" (2017). Chosen a priori.
 # gamma=2 is the paper default. alpha=1 means no class-balancing term, so this
-# experiment is focusing-only and is not mixed with Stage 4A pos_weight.
+# experiment is focusing-only and is not mixed with Weighted BCE pos_weight.
 FOCAL_GAMMA = 2.0
 FOCAL_ALPHA = 1.0
 

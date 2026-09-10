@@ -5,7 +5,7 @@ from pathlib import Path
 import numpy as np
 from sklearn.metrics import average_precision_score, roc_auc_score
 
-from src.data.stage3_labels import FROZEN_TOP25
+from src.data.next_visit_labels import FROZEN_TOP25
 from src.evaluation.thresholds import sigmoid
 
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 from sklearn.metrics import precision_recall_fscore_support
 
-from src.data.stage3_labels import FROZEN_TOP25
+from src.data.next_visit_labels import FROZEN_TOP25
 
 
 def sigmoid(logits: np.ndarray) -> np.ndarray:

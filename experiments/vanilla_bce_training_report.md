@@ -1,4 +1,4 @@
-# Stage 3 Training Report
+# Vanilla BCE training report
 
 Baseline replication run. Architecture is frozen. Hyperparameters were not tuned.
 Decreasing BCE is not treated as task success.
@@ -18,7 +18,7 @@ Decreasing BCE is not treated as task success.
 - hardware: `AMD64 Family 25 Model 124 Stepping 0, AuthenticAMD | cuda=False cpu`
 - runtime_sec: `1653.4`
 - best epoch: `16` (lowest validation BCE)
-- checkpoint: `data\processed\checkpoints\stage3_best.pt`
+- checkpoint: `data\processed\checkpoints\vanilla_bce_best.pt`
 
 ## Epoch losses
 

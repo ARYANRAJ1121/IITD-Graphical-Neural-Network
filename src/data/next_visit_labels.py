@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-# Frozen Stage 3 targets: top-25 SNOMED concepts from experiments/stage3_label_feasibility.md
+# Frozen next-visit targets: top-25 SNOMED concepts from experiments/label_feasibility.md
 FROZEN_TOP25 = [
     ("265764009", "Renal dialysis (procedure)"),
     ("430193006", "Medication Reconciliation (procedure)"),

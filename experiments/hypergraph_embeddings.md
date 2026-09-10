@@ -1,8 +1,8 @@
-# Stage 2: MINGLE Graph Construction & Semantic Embedding Report
+# Hypergraph construction and semantic embeddings
 
 ## 1. Implementation Summary
 Successfully replicated the MINGLE methodology for constructing the hypergraph and computing semantic embeddings on the Coherent synthetic dataset.
-- **Nodes**: Extracted from unique clinical concepts (`Condition`, `MedicationRequest`, `Procedure`, `Observation`), strictly excluding generic `DiagnosticReport` nodes identified in Stage 1.
+- **Nodes**: Extracted from unique clinical concepts (`Condition`, `MedicationRequest`, `Procedure`, `Observation`), strictly excluding generic `DiagnosticReport` nodes identified in Dataset profile.
 - **Hyperedges (Visits)**: Extracted from `Encounter` IDs and chronologically sorted per patient.
 - **Structural Embeddings ($s_v$)**: Calculated using `networkx` and `gensim` (DeepWalk/Word2Vec) based on the co-occurrence graph of nodes within encounters.
 - **Semantic Embeddings ($C_v$, $N_e$)**: Computed via `sentence-transformers` using the selected model. Notes were encoded in batches of 5,000 to manage memory constraints.
@@ -63,4 +63,4 @@ All files are saved in `data/processed/`:
 > **Original Implementation**: OpenAI's API (`text-embedding-ada-002`, 1536d)
 > **Our Implementation**: Open-source local transformer (`NeuML/biomedbert-base-embeddings`, 768d)
 > 
-> As a result, the final $X_v$ dimension is 832 (instead of 1600). The $N_e$ dimension is 768 (instead of 1536). All message passing algorithms in Stage 3 will inherit these dimensions natively. No architectural changes were required to accommodate this.
+> As a result, the final $X_v$ dimension is 832 (instead of 1600). The $N_e$ dimension is 768 (instead of 1536). All message passing algorithms in Vanilla BCE will inherit these dimensions natively. No architectural changes were required to accommodate this.

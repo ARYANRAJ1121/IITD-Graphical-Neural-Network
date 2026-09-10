@@ -5,7 +5,7 @@ from dataclasses import dataclass
 import numpy as np
 import torch
 
-from src.data.stage3_bundle import Stage3Bundle
+from src.data.processed_bundle import ProcessedBundle
 
 
 @dataclass
@@ -56,7 +56,7 @@ def slice_incidence(
 
 
 def build_split_graph(
-    bundle: Stage3Bundle,
+    bundle: ProcessedBundle,
     encounter_index: np.ndarray,
     name: str,
     eval_offset: int = 0,
@@ -82,7 +82,7 @@ def build_split_graph(
     )
 
 
-def build_eval_graph(bundle: Stage3Bundle, train_idx: np.ndarray, eval_idx: np.ndarray, name: str) -> SplitGraph:
+def build_eval_graph(bundle: ProcessedBundle, train_idx: np.ndarray, eval_idx: np.ndarray, name: str) -> SplitGraph:
     combined = np.concatenate([train_idx, eval_idx])
     graph = build_split_graph(bundle, combined, name, eval_offset=int(train_idx.size))
     return graph

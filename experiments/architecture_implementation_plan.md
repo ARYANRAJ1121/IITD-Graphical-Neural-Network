@@ -1,4 +1,4 @@
-# Stage 3 Implementation Plan: MINGLE Neural Architecture
+# Architecture implementation plan: MINGLE neural architecture
 
 ## 1. Replication Fidelity
 * **A. Exact reproduction**: The custom Bipartite Graph Attention mechanism ($f_{V \rightarrow E}$ and $f_{E \rightarrow V}$), two-level semantic infusion strategy, structural DeepWalk integration, self-loop augmentation, and final MLP classifier are strictly mathematically reproduced from the original equations.
@@ -57,9 +57,9 @@ We will write custom PyTorch `nn.Module` classes representing the exact multi-he
 > [!WARNING]
 > **Prediction Task**: Given encounter $t$, predict the presence of the 25 most frequent conditions in encounter $t+1$ for the same patient.
 > 
-> **Label Feasibility Results**: As documented in `stage3_label_feasibility.md`, the Coherent dataset suffers from severe label sparsity. While there are 142,668 valid $t \rightarrow t+1$ training pairs, 19 out of the 25 classes have a positive prevalence of <1%. The most frequent class has only a 9.47% prevalence.
+> **Label Feasibility Results**: As documented in `label_feasibility.md`, the Coherent dataset suffers from severe label sparsity. While there are 142,668 valid $t \rightarrow t+1$ training pairs, 19 out of the 25 classes have a positive prevalence of <1%. The most frequent class has only a 9.47% prevalence.
 > 
-> **Action Plan**: Use MINGLE Eq. (4) via `BCEWithLogitsLoss` on these sparse targets. No focal loss, class weights, or oversampling in Stage 3.
+> **Action Plan**: Use MINGLE Eq. (4) via `BCEWithLogitsLoss` on these sparse targets. No focal loss, class weights, or oversampling in Vanilla BCE.
 
 ## 8. Proposed Architecture Pipeline
 ```mermaid

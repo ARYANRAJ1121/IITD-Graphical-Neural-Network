@@ -1,8 +1,8 @@
-# Stage 4A: Weighted BCE (stage4a_weighted_bce_convergence)
+# Weighted BCE (weighted_bce_convergence)
 
 Isolated loss-function experiment. Architecture, graph, embeddings, labels, split, and seed are frozen.
 Positive-class weights from **training pairs only**. No focal loss, oversampling, or threshold tuning during training.
-F1 uses the paper's 0.5 threshold. Checkpoint selected by **unweighted** validation BCE (same rule as Stage 3).
+F1 uses the paper's 0.5 threshold. Checkpoint selected by **unweighted** validation BCE (same rule as Vanilla BCE).
 
 ## Setup
 
@@ -16,7 +16,7 @@ F1 uses the paper's 0.5 threshold. Checkpoint selected by **unweighted** validat
 - hardware: `AMD64 Family 25 Model 124 Stepping 0, AuthenticAMD | cuda=False cpu`
 - runtime_sec: `4075.6`
 - best epoch: `49` (lowest unweighted val BCE)
-- checkpoint: `data\processed\checkpoints\stage4a_converged_best.pt`
+- checkpoint: `data\processed\checkpoints\weighted_bce_converged_best.pt`
 - early stopping: `patience=10 on unweighted val BCE; stopped_early=False`
 
 ## Train-only class weights (`n_neg / n_pos`)
@@ -221,9 +221,9 @@ F1 uses the paper's 0.5 threshold. Checkpoint selected by **unweighted** validat
 | 24 | `312681000` | Bone density scan (procedure) | 0.8983918767969055 | 0.14439891169509148 | 0.0342 | 0.0175 | 0.8434 | 83 |
 | 25 | `433112001` | Percutaneous mechanical thrombectomy of portal vein using fluoroscopic guidance | 0.8662743345724436 | 0.025643866925697804 | 0.0255 | 0.0130 | 0.7816 | 87 |
 
-## Comparison vs Stage 3 vanilla BCE (test)
+## Comparison vs Vanilla BCE vanilla BCE (test)
 
-| Metric | Stage 3 vanilla | Stage 4A weighted | Δ |
+| Metric | Vanilla BCE vanilla | Weighted BCE weighted | Δ |
 | --- | ---: | ---: | ---: |
 | BCE | 0.062200 | 0.346839 | 0.284639 |
 | micro-AUPRC | 0.157836 | 0.339009 | 0.181172 |
@@ -265,18 +265,18 @@ F1 uses the paper's 0.5 threshold. Checkpoint selected by **unweighted** validat
 
 - dialysis test AUPRC: `0.8437717856964287`
 - mean AUPRC of other 24 classes: `0.2467911546322342`
-- classes with AUPRC > Stage 3: `25/25`
+- classes with AUPRC > Vanilla BCE: `25/25`
 - dialysis AUPRC / macro-AUPRC: `3.12`
 
-AUPRC is **more distributed** than Stage 3: dialysis no longer accounts for nearly all ranking mass.
+AUPRC is **more distributed** than Vanilla BCE: dialysis no longer accounts for nearly all ranking mass.
 
 ## Numerical issues
 
 None recorded.
 
-## Comparison vs Stage 3 and Stage 4A (20-epoch)
+## Comparison vs Vanilla BCE and Weighted BCE (20-epoch)
 
-| Metric | Stage 3 vanilla | 4A 20-epoch | 4A converged | vs S3 | vs 4A-20 |
+| Metric | Vanilla BCE vanilla | Weighted BCE 20-epoch | Weighted BCE converged | vs Vanilla BCE | vs WBCE-20 |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | unweighted test BCE | 0.062200 | 0.415957 | 0.346839 | 0.284639 | -0.069118 |
 | micro-AUPRC | 0.157836 | 0.150431 | 0.339009 | 0.181172 | 0.188578 |
@@ -286,11 +286,11 @@ None recorded.
 | macro-F1 @0.5 | 0.0000 | 0.1249 | 0.1374 | 0.1374 | 0.0125 |
 | mean AUPRC other 24 | — | 0.2112 | 0.2468 | — | 0.0356 |
 
-- classes with test AUPRC > Stage 3: `25/25`
+- classes with test AUPRC > Vanilla BCE: `25/25`
 - dialysis AUPRC: `0.8437717856964287`
 
 ## Convergence questions
 
 - A. macro-AUPRC still ≥ 0.20? **yes** (`0.27067037987480197`)
-- B. most classes still above Stage 3 AUPRC? **yes** (`25/25`)
+- B. most classes still above Vanilla BCE AUPRC? **yes** (`25/25`)
 - C. distributed vs dialysis-only? mean other-24 AUPRC `0.2468` vs dialysis `0.8437717856964287`

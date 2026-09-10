@@ -7,7 +7,7 @@ from src.models.layers import MingleLayer
 
 
 class MingleModel(nn.Module):
-    """Frozen Stage 3 MINGLE: MLP_1, L bipartite PMA layers, JK-CONCAT, MLP_CLS."""
+    """Frozen Vanilla BCE MINGLE: MLP_1, L bipartite PMA layers, JK-CONCAT, MLP_CLS."""
 
     def __init__(
         self,

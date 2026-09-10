@@ -7,12 +7,12 @@ import numpy as np
 import pandas as pd
 import torch
 
-from src.data.stage3_labels import FROZEN_TOP25, FROZEN_TOP25_CODES
+from src.data.next_visit_labels import FROZEN_TOP25, FROZEN_TOP25_CODES
 from src.graph.incidence import build_augmented_incidence
 
 
 @dataclass
-class Stage3Bundle:
+class ProcessedBundle:
     node_ids: list[str]
     encounter_ids: list[str]
     patient_ids: list[str]
@@ -90,7 +90,7 @@ def example_index(patient_ids: list[str], pair_mask: np.ndarray, split_ids: dict
     return out
 
 
-def load_processed_bundle(processed_dir: Path, seed: int, ratios: tuple[float, float, float]) -> Stage3Bundle | None:
+def load_processed_bundle(processed_dir: Path, seed: int, ratios: tuple[float, float, float]) -> ProcessedBundle | None:
     required = [
         processed_dir / "concept_nodes.csv",
         processed_dir / "encounter_hyperedges.csv",
@@ -121,7 +121,7 @@ def load_processed_bundle(processed_dir: Path, seed: int, ratios: tuple[float, f
     inc_node, inc_edge, num_real, _ = build_augmented_incidence(node_ids, encounter_ids, pairs)
     labels, pair_mask = build_next_visit_labels(encounters, edges, node_ids)
     split_ids = split_patients(patient_ids, ratios, seed)
-    return Stage3Bundle(
+    return ProcessedBundle(
         node_ids=node_ids,
         encounter_ids=encounter_ids,
         patient_ids=patient_ids,
@@ -139,7 +139,7 @@ def load_processed_bundle(processed_dir: Path, seed: int, ratios: tuple[float, f
     )
 
 
-def make_synthetic_bundle(seed: int = 42) -> Stage3Bundle:
+def make_synthetic_bundle(seed: int = 42) -> ProcessedBundle:
     """Small leak-checked graph for forward-pass validation (not full Coherent)."""
     rng = np.random.RandomState(seed)
     node_ids = [f"http://snomed.info/sct|{code}" for code, _ in FROZEN_TOP25[:8]]
@@ -171,7 +171,7 @@ def make_synthetic_bundle(seed: int = 42) -> Stage3Bundle:
     inc_node, inc_edge, num_real, _ = build_augmented_incidence(node_ids, encounter_ids, pairs)
     labels, pair_mask = build_next_visit_labels(encounters, edges, node_ids)
     split_ids = split_patients(patient_ids, (0.5, 0.5, 0.0), seed)
-    return Stage3Bundle(
+    return ProcessedBundle(
         node_ids=node_ids,
         encounter_ids=encounter_ids,
         patient_ids=patient_ids,

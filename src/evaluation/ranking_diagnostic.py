@@ -7,14 +7,14 @@ import torch
 from sklearn.metrics import average_precision_score, roc_auc_score
 
 from src.config import load_config
-from src.data.stage3_bundle import example_index, load_processed_bundle
+from src.data.processed_bundle import example_index, load_processed_bundle
 from src.evaluation.ranking_metrics import class_row, macro_mean
 from src.evaluation.threshold_analysis import CHECKPOINT, _load_model
 from src.evaluation.thresholds import sigmoid
 from src.graph.splits import build_eval_graph, patient_encounter_index
-from src.training.train_stage3 import _device, _forward, _masked_numpy, _split_logits, _to_device
+from src.training.train_vanilla_bce import _device, _forward, _masked_numpy, _split_logits, _to_device
 
-REPORT = Path("experiments/stage3_per_class_ranking_diagnostic.md")
+REPORT = Path("experiments/vanilla_bce_ranking_diagnostic.md")
 
 
 def _fmt(value) -> str:
@@ -40,7 +40,7 @@ def write_report(path: Path, rows: list[dict], micro: dict, n_train: int, n_val:
     n_auroc_gt06 = sum(1 for r in rows if r["auroc"] is not None and r["auroc"] >= 0.60)
 
     lines = [
-        "# Stage 3 Per-Class Ranking Diagnostic",
+        "# Vanilla BCE per-class ranking diagnostic",
         "",
         "Frozen checkpoint. No retraining, no architecture change, no class weights, no focal loss, no oversampling.",
         "No decision threshold is applied. Metrics are ranking-only.",
@@ -154,7 +154,7 @@ def main() -> None:
         tuple(config["training"]["patient_split"]),
     )
     if bundle is None:
-        raise SystemExit("Processed Stage 2 tensors are missing.")
+        raise SystemExit("Processed tensors are missing.")
 
     pair_mask = bundle.pair_mask.numpy()
     split_ex = example_index(bundle.patient_ids, pair_mask, bundle.split_ids)

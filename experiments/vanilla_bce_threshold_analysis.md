@@ -1,10 +1,10 @@
-# Stage 3 Threshold Sensitivity Analysis
+# Vanilla BCE threshold sensitivity
 
 Checkpoint frozen. No retraining. Architecture, loss, and optimizer unchanged.
 Threshold chosen on **validation only**. Test is scored once at that threshold.
 A higher F1 at a lower threshold is not treated as model success by itself.
 
-- checkpoint: `data\processed\checkpoints\stage3_best.pt`
+- checkpoint: `data\processed\checkpoints\vanilla_bce_best.pt`
 - checkpoint epoch: `16`
 - checkpoint val BCE: `0.06223045289516449`
 - selection rule: maximize validation **micro-F1**; ties broken by validation macro-F1, then by the larger threshold

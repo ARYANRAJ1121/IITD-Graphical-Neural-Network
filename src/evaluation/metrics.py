@@ -8,7 +8,7 @@ from sklearn.metrics import (
     roc_auc_score,
 )
 
-from src.data.stage3_labels import FROZEN_TOP25
+from src.data.next_visit_labels import FROZEN_TOP25
 
 
 def _safe_auroc(y_true: np.ndarray, y_score: np.ndarray) -> float | None:

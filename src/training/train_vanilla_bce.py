@@ -8,12 +8,12 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from src.data.stage3_bundle import Stage3Bundle
-from src.data.stage3_labels import FROZEN_TOP25
+from src.data.processed_bundle import ProcessedBundle
+from src.data.next_visit_labels import FROZEN_TOP25
 from src.evaluation.metrics import always_negative_baseline, compute_metrics, majority_baseline
 from src.graph.splits import SplitGraph, build_eval_graph, build_split_graph, patient_encounter_index
 from src.models.mingle import MingleModel
-from src.training.validate_stage3 import masked_bce_with_logits
+from src.training.validate_architecture import masked_bce_with_logits
 
 
 def _device() -> torch.device:
@@ -34,7 +34,7 @@ def _to_device(graph: SplitGraph, device: torch.device) -> SplitGraph:
     )
 
 
-def _forward(model: MingleModel, bundle: Stage3Bundle, graph: SplitGraph) -> torch.Tensor:
+def _forward(model: MingleModel, bundle: ProcessedBundle, graph: SplitGraph) -> torch.Tensor:
     outputs = model(
         bundle.node_states,
         bundle.concept_semantics,
@@ -66,7 +66,7 @@ def _check_finite(loss: torch.Tensor, epoch: int) -> None:
 
 def write_training_report(path: Path, payload: dict) -> None:
     lines = [
-        "# Stage 3 Training Report",
+        "# Vanilla BCE training report",
         "",
         "Baseline replication run. Architecture is frozen. Hyperparameters were not tuned.",
         "Decreasing BCE is not treated as task success.",
@@ -157,7 +157,7 @@ def write_training_report(path: Path, payload: dict) -> None:
     path.write_text("\n".join(lines), encoding="utf-8")
 
 
-def train_stage3(config: dict, bundle: Stage3Bundle, report_path: Path) -> dict:
+def train_vanilla_bce(config: dict, bundle: ProcessedBundle, report_path: Path) -> dict:
     if bundle.source != "processed":
         raise RuntimeError("Refusing to run the baseline experiment on synthetic data.")
 
@@ -209,7 +209,7 @@ def train_stage3(config: dict, bundle: Stage3Bundle, report_path: Path) -> dict:
 
     checkpoint_dir = Path(config["training"]["checkpoint_dir"])
     checkpoint_dir.mkdir(parents=True, exist_ok=True)
-    best_path = checkpoint_dir / "stage3_best.pt"
+    best_path = checkpoint_dir / "vanilla_bce_best.pt"
 
     epochs = int(config["training"]["epochs"])
     history = []
@@ -306,5 +306,5 @@ def train_stage3(config: dict, bundle: Stage3Bundle, report_path: Path) -> dict:
     }
     report_path.parent.mkdir(parents=True, exist_ok=True)
     write_training_report(report_path, payload)
-    (checkpoint_dir / "stage3_history.json").write_text(json.dumps(payload["history"], indent=2), encoding="utf-8")
+    (checkpoint_dir / "vanilla_bce_history.json").write_text(json.dumps(payload["history"], indent=2), encoding="utf-8")
     return payload

@@ -31,7 +31,7 @@ def generate_random_walks(graph, num_walks, walk_length):
     return walks
 
 def main():
-    print("=== Stage 2: MINGLE Graph Construction + Semantic Embedding ===")
+    print("=== Hypergraph construction + semantic embedding ===")
     
     fhir_dir = Path("../fhir")
     if not fhir_dir.exists():
@@ -275,7 +275,7 @@ def main():
     with open('data/processed/hypergraph_statistics.json', 'w') as f:
         f.write(json.dumps(stats, option=json.OPT_INDENT_2).decode('utf-8'))
         
-    print("Stage 2 processing completed successfully!")
+    print("Hypergraph construction completed successfully!")
 
 if __name__ == '__main__':
     main()

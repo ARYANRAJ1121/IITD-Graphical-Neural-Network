@@ -18,7 +18,7 @@ model:
 training:
   seed: 42
   patient_split: [0.70, 0.15, 0.15]
-  # Imbalance corrections are forbidden in Stage 3.
+  # Imbalance corrections are forbidden in Vanilla BCE.
   use_focal_loss: false
   use_class_weights: false
   use_oversampling: false

@@ -5,13 +5,13 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from src.data.stage3_bundle import Stage3Bundle
-from src.training.train_stage4a import train_stage4a
-from src.training.train_stage4b import STAGE4A50_TEST
+from src.data.processed_bundle import ProcessedBundle
+from src.training.train_weighted_bce import train_weighted_bce
+from src.training.train_focal_loss import WEIGHTED_BCE_50_TEST
 
 
-def write_stage5a_report(path: Path, payload: dict) -> None:
-    s4 = STAGE4A50_TEST
+def write_note_ablation_report(path: Path, payload: dict) -> None:
+    s4 = WEIGHTED_BCE_50_TEST
     t = payload["test_metrics"]
     v = payload["val_metrics"]
     tr = payload["train_metrics"]
@@ -42,25 +42,25 @@ def write_stage5a_report(path: Path, payload: dict) -> None:
     if notes_help:
         conclusion = (
             "Removing clinical-note semantics **lowers** both macro-AUPRC and micro-AUPRC "
-            "vs Stage 4A, so note embeddings contributed useful signal on this Coherent run."
+            "vs Weighted BCE, so note embeddings contributed useful signal on this Coherent run."
         )
     elif notes_hurt:
         conclusion = (
             "Removing clinical-note semantics **raises** both macro-AUPRC and micro-AUPRC "
-            "vs Stage 4A. Do not treat notes as helpful on this evidence."
+            "vs Weighted BCE. Do not treat notes as helpful on this evidence."
         )
     else:
         conclusion = (
             "Removing notes does **not** move macro-AUPRC and micro-AUPRC in the same "
-            "direction vs Stage 4A. Do not claim that notes help or hurt overall."
+            "direction vs Weighted BCE. Do not claim that notes help or hurt overall."
         )
 
     lines = [
-        "# Stage 5A: No Clinical Note Semantics",
+        "# Note ablation: no clinical note semantics",
         "",
         "## Objective",
         "",
-        "Ablate **clinical note embeddings** (`N_e`) only, with Stage 4A weighted BCE and the "
+        "Ablate **clinical note embeddings** (`N_e`) only, with Weighted BCE weighted BCE and the "
         "frozen MINGLE architecture. Compare full model "
         "(DeepWalk + concept semantics + note semantics) vs "
         "(DeepWalk + concept semantics + no note information).",
@@ -69,7 +69,7 @@ def write_stage5a_report(path: Path, payload: dict) -> None:
         "",
         "Notes enter only as `graph.notes` → `MingleModel.forward(note_semantics)` → "
         "`N_aug = cat([N_e, C_v])` → `H_e = MLP_1(N_aug)`.",
-        "Stage 5A replaces in-memory `bundle.note_semantics` with **zeros of shape `(E, 768)`** "
+        "Note ablation replaces in-memory `bundle.note_semantics` with **zeros of shape `(E, 768)`** "
         "before graphs are built. `note_embeddings.npy` on disk is not modified. "
         "Not random. Concept rows of `N_aug` remain `C_v`. DeepWalk `X_v` is unchanged. "
         "Because MLP_1 is `Linear`, real-visit `H_e` becomes the shared bias vector; visits "
@@ -92,7 +92,7 @@ def write_stage5a_report(path: Path, payload: dict) -> None:
         f"- early stopping: `{payload.get('early_stopping', 'off')}`",
         f"- note ablation: `{payload.get('ablation', 'zero N_e')}`",
         "",
-        "Unchanged vs Stage 4A: architecture, graph topology, DeepWalk, concept semantics, "
+        "Unchanged vs Weighted BCE: architecture, graph topology, DeepWalk, concept semantics, "
         "labels, split, seed, Adam, lr, weighted BCE, evaluation, checkpoint rule.",
         "",
         "## Train-only class weights (`n_neg / n_pos`)",
@@ -150,9 +150,9 @@ def write_stage5a_report(path: Path, payload: dict) -> None:
     lines.extend(
         [
             "",
-            "## Stage 4A vs Stage 5A (test)",
+            "## Weighted BCE vs note ablation (test)",
             "",
-            "| Metric | Stage 4A Full + Weighted BCE | Stage 5A No notes + Weighted BCE | Δ (5A − 4A) |",
+            "| Metric | Weighted BCE Full + Weighted BCE | Note ablation No notes + Weighted BCE | Δ (5A − 4A) |",
             "| --- | ---: | ---: | ---: |",
             f"| unweighted BCE | {s4['bce']:.6f} | {t['bce']:.6f} | {t['bce']-s4['bce']:.6f} |",
             f"| micro-AUPRC | {s4['micro_auprc']:.6f} | {t['micro_auprc']:.6f} | {d_micro_auprc:.6f} |",
@@ -167,10 +167,10 @@ def write_stage5a_report(path: Path, payload: dict) -> None:
             f"- change in macro-AUROC: `{d_macro_auroc:.6f}`",
             f"- change in micro-F1: `{d_micro_f1:.4f}`",
             f"- change in macro-F1: `{d_macro_f1:.4f}`",
-            f"- classes with AUPRC > Stage 4A: `{n_gt_4a}/25`",
-            f"- classes with AUPRC < Stage 4A: `{n_lt_4a}/25`",
+            f"- classes with AUPRC > Weighted BCE: `{n_gt_4a}/25`",
+            f"- classes with AUPRC < Weighted BCE: `{n_lt_4a}/25`",
             "",
-            "## Per-class AUPRC vs Stage 4A",
+            "## Per-class AUPRC vs Weighted BCE",
             "",
             "| Rank | Name | 4A AUPRC | 5A AUPRC | Δ |",
             "| ---: | --- | ---: | ---: | ---: |",
@@ -196,8 +196,8 @@ def write_stage5a_report(path: Path, payload: dict) -> None:
             "## Limitations",
             "",
             "- Single seed. Zeros are a shared MLP_1 bias for all visits, not a removed MLP_1 channel.",
-            "- Stage 4A numbers are the stored 50-epoch converged test metrics; 4A was not retrained.",
-            "- Coherent notes are synthetic; empty-note visits already existed in Stage 2.",
+            "- Weighted BCE numbers are the stored 50-epoch converged test metrics; 4A was not retrained.",
+            "- Coherent notes are synthetic; empty-note visits already existed in Hypergraph construction.",
             "",
             "## Numerical issues",
             "",
@@ -208,9 +208,9 @@ def write_stage5a_report(path: Path, payload: dict) -> None:
     path.write_text("\n".join(lines), encoding="utf-8")
 
 
-def train_stage5a(
+def train_note_ablation(
     config: dict,
-    bundle: Stage3Bundle,
+    bundle: ProcessedBundle,
     report_path: Path,
 ) -> dict:
     if bundle.note_semantics.ndim != 2 or bundle.note_semantics.size(1) != 768:
@@ -223,22 +223,22 @@ def train_stage5a(
     # Neutral notes: zeros, same dtype/shape. Disk embeddings are not written.
     bundle.note_semantics = torch.zeros_like(bundle.note_semantics)
     print(
-        "Stage 5A: N_e replaced with zeros "
+        "Note ablation: N_e replaced with zeros "
         f"{tuple(bundle.note_semantics.shape)}. C_v / X_v / incidence unchanged.",
         flush=True,
     )
 
-    payload = train_stage4a(
+    payload = train_weighted_bce(
         config,
         bundle,
         report_path,
         epochs=50,
-        checkpoint_name="stage5a_no_note_semantics_best.pt",
-        history_name="stage5a_no_note_semantics_history.json",
+        checkpoint_name="note_ablation_best.pt",
+        history_name="note_ablation_history.json",
         early_stop_patience=10,
-        experiment_name="stage5a_no_note_semantics",
-        compare_stage4a20=False,
+        experiment_name="note_ablation",
+        compare_weighted_bce_20=False,
     )
     payload["ablation"] = "zero N_e (in-memory only); C_v and DeepWalk unchanged"
-    write_stage5a_report(report_path, payload)
+    write_note_ablation_report(report_path, payload)
     return payload

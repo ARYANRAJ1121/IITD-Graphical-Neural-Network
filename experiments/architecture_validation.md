@@ -1,4 +1,4 @@
-# Stage 3 Implementation Validation Report
+# Architecture validation report
 
 Generated after the frozen mathematical spec (loss = MINGLE Eq. (4) / `BCEWithLogitsLoss`).
 No focal loss, class weights, or oversampling.
@@ -7,7 +7,7 @@ No focal loss, class weights, or oversampling.
 - Processed Coherent tensors loaded: `True`
 - Forward-pass loss (masked BCEWithLogitsLoss): `0.696014`
 
-## Production hypergraph (frozen Stage 2 / Stage 3 spec)
+## Production hypergraph (frozen Hypergraph construction / Vanilla BCE spec)
 
 - Real encounter hyperedges: **143946**
 - Self-loop hyperedges: **564**

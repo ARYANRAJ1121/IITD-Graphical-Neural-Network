@@ -1,6 +1,6 @@
-# Stage 3 Mathematical Equation Mapping (MINGLE / HypEHR)
+# Mathematical equation mapping (MINGLE / HypEHR)
 
-**FROZEN** 2026-08-25 after the loss-function provenance correction. This is the Stage 3 mathematical specification. Do not change architecture, dimensions, or objectives without a new audit.
+**FROZEN** 2026-08-25 after the loss-function provenance correction. This is the Vanilla BCE mathematical specification. Do not change architecture, dimensions, or objectives without a new audit.
 
 This document provides the exact mathematical reproduction of the HypEHR attention mechanism (as utilized by MINGLE). It ensures mathematical fidelity to the Pooling by Multihead Attention (PMA) formulation while explicitly categorizing every architectural component by its provenance (Exact Paper Equation, Inferred, or Our Choice).
 

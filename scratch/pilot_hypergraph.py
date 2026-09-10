@@ -11,7 +11,7 @@ def get_memory_usage():
     return process.memory_info().rss / 1024 / 1024  # in MB
 
 def main():
-    print("=== Pilot Stage 2: Embedding Generation ===")
+    print("=== Pilot Hypergraph construction: Embedding Generation ===")
     
     model_name = "NeuML/biomedbert-base-embeddings"
     print(f"Loading model: {model_name}...")

@@ -1,10 +1,10 @@
-# Stage 3 Per-Class Ranking Diagnostic
+# Vanilla BCE per-class ranking diagnostic
 
 Frozen checkpoint. No retraining, no architecture change, no class weights, no focal loss, no oversampling.
 No decision threshold is applied. Metrics are ranking-only.
 Aggregate micro-F1 is not used as a success criterion.
 
-- checkpoint: `data\processed\checkpoints\stage3_best.pt`
+- checkpoint: `data\processed\checkpoints\vanilla_bce_best.pt`
 - checkpoint epoch: `16`
 - examples: train `99695`, val `21124`, test `21849`
 

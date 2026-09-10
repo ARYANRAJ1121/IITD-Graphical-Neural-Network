@@ -6,12 +6,12 @@ import numpy as np
 import torch
 
 from src.config import load_config
-from src.data.stage3_bundle import load_processed_bundle
+from src.data.processed_bundle import load_processed_bundle
 from src.evaluation.metrics import compute_metrics
 from src.evaluation.thresholds import score_threshold, select_threshold, sigmoid
 from src.graph.splits import build_eval_graph, patient_encounter_index
 from src.models.mingle import MingleModel
-from src.training.train_stage3 import (
+from src.training.train_vanilla_bce import (
     _device,
     _forward,
     _masked_numpy,
@@ -20,8 +20,8 @@ from src.training.train_stage3 import (
 )
 
 THRESHOLDS = [0.01, 0.02, 0.03, 0.05, 0.075, 0.10, 0.15, 0.20, 0.25, 0.30, 0.40, 0.50]
-CHECKPOINT = Path("data/processed/checkpoints/stage3_best.pt")
-REPORT = Path("experiments/stage3_threshold_analysis.md")
+CHECKPOINT = Path("data/processed/checkpoints/vanilla_bce_best.pt")
+REPORT = Path("experiments/vanilla_bce_threshold_analysis.md")
 
 
 def _fmt(value: float) -> str:
@@ -78,7 +78,7 @@ def write_report(
 ) -> None:
     test_by_t = {row["threshold"]: row for row in test_rows}
     lines = [
-        "# Stage 3 Threshold Sensitivity Analysis",
+        "# Vanilla BCE threshold sensitivity",
         "",
         "Checkpoint frozen. No retraining. Architecture, loss, and optimizer unchanged.",
         "Threshold chosen on **validation only**. Test is scored once at that threshold.",
@@ -191,7 +191,7 @@ def main() -> None:
         tuple(config["training"]["patient_split"]),
     )
     if bundle is None:
-        raise SystemExit("Processed Stage 2 tensors are missing.")
+        raise SystemExit("Processed tensors are missing.")
 
     device = _device()
     model, ckpt = _load_model(device, config)

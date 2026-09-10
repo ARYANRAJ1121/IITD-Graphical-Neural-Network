@@ -238,7 +238,7 @@ def generate_report(profile: dict[str, Any]) -> str:
         f"| {row['mingle_concept']} | {row['coherent_resource_field']} | {row['example_actual_value']} | {row['availability']} | {row['notes']} |"
         for row in profile["mingle_mapping"]
     )
-    return f"""# Stage 1 Dataset Profile
+    return f"""# Dataset profile
 
 ## 1. Dataset Overview
 
@@ -329,7 +329,7 @@ def generate_report(profile: dict[str, Any]) -> str:
 - Some medication concepts require following `MedicationRequest.medicationReference -> Medication`.
 - External practitioner, organization, and location references are identifier-based rather than local resource IDs.
 
-## 14. Recommended Adaptations for Stage 2
+## 14. Recommended Adaptations for Hypergraph construction
 
 - Resolve all `urn:uuid` bundle-local references during extraction.
 - Use `Encounter.id` as the visit/hyperedge anchor.
@@ -348,7 +348,7 @@ def build_notebook() -> dict[str, Any]:
                 "source": [
                     "# 01 Dataset Profiling\n",
                     "\n",
-                    "This notebook is a lightweight entry point for the Stage 1 profiling artifacts.\n",
+                    "This notebook is a lightweight entry point for the dataset profiling artifacts.\n",
                     "It does not perform preprocessing, embedding generation, graph construction, or training.\n",
                 ],
             },
@@ -858,14 +858,14 @@ def main() -> None:
             "coherent_resource_field": "Not present in raw Coherent; must be derived from codes/displays",
             "example_actual_value": "",
             "availability": "NO",
-            "notes": "Requires Stage 2+ embedding generation.",
+            "notes": "Requires later hypergraph / embedding embedding generation.",
         },
         {
             "mingle_concept": "clinical note embedding N_e",
             "coherent_resource_field": "Not present in raw Coherent; must be derived from note text",
             "example_actual_value": "",
             "availability": "NO",
-            "notes": "Requires Stage 2+ embedding generation.",
+            "notes": "Requires later hypergraph / embedding embedding generation.",
         },
     ]
 
@@ -917,7 +917,7 @@ def main() -> None:
             "coherent_equivalent": "No single direct MINGLE target field in raw FHIR bundles",
             "availability": "PARTIAL",
             "evidence": "No one-step label field was identified during profiling.",
-            "adaptation_required": "Explicitly engineer the downstream task label in Stage 2.",
+            "adaptation_required": "Explicitly engineer the downstream task label in Hypergraph construction.",
         },
     ]
 
@@ -1058,7 +1058,7 @@ def main() -> None:
         writer.writeheader()
         writer.writerows(mingle_mapping_rows)
 
-    (experiments_dir / "stage1_dataset_profile.md").write_text(generate_report(profile), encoding="utf-8")
+    (experiments_dir / "dataset_profile.md").write_text(generate_report(profile), encoding="utf-8")
     (notebooks_dir / "01_dataset_profiling.ipynb").write_text(
         json.dumps(build_notebook(), indent=2),
         encoding="utf-8",

@@ -3,7 +3,7 @@ from torch import nn
 
 
 class PairNorm(nn.Module):
-    """Center-and-scale PairNorm as frozen in stage3_equation_mapping.md §5."""
+    """Center-and-scale PairNorm as frozen in equation_mapping.md §5."""
 
     def __init__(self, eps: float = 1e-5) -> None:
         super().__init__()
