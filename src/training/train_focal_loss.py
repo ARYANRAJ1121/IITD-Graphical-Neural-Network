@@ -15,7 +15,9 @@ from src.models.mingle import MingleModel
 from src.training.focal import FOCAL_ALPHA, FOCAL_GAMMA, masked_binary_focal_loss
 from src.training.train_vanilla_bce import (
     _check_finite,
+    _cuda_mem,
     _device,
+    _eval_forward,
     _forward,
     _masked_numpy,
     _split_logits,
@@ -362,10 +364,13 @@ def train_focal_loss(
     val_idx = patient_encounter_index(bundle.patient_ids, bundle.split_ids["val"])
     test_idx = patient_encounter_index(bundle.patient_ids, bundle.split_ids["test"])
     train_graph = _to_device(build_split_graph(bundle, train_idx, "train"), device)
-    val_graph = _to_device(build_eval_graph(bundle, train_idx, val_idx, "val"), device)
-    test_graph = _to_device(build_eval_graph(bundle, train_idx, test_idx, "test"), device)
+    val_graph = build_eval_graph(bundle, train_idx, val_idx, "val")
+    test_graph = build_eval_graph(bundle, train_idx, test_idx, "test")
     bundle.node_states = bundle.node_states.to(device)
     bundle.concept_semantics = bundle.concept_semantics.to(device)
+    if device.type == "cuda":
+        torch.cuda.empty_cache()
+        _cuda_mem("after train graph + embeddings", device)
 
     model = MingleModel(
         node_input_dim=int(frozen["node_input_dim"]),
@@ -400,25 +405,30 @@ def train_focal_loss(
         _check_finite(train_focal, epoch)
         train_focal.backward()
         optimizer.step()
+        train_fl_item = float(train_focal.item())
         with torch.no_grad():
             train_u = masked_bce_with_logits(train_logits, train_graph.labels, train_graph.pair_mask)
-            model.eval()
-            val_logits = _forward(model, bundle, val_graph)
-            val_logits, val_labels, val_mask = _split_logits(val_logits, val_graph)
-            val_u = masked_bce_with_logits(val_logits, val_labels, val_mask)
-            val_focal = masked_binary_focal_loss(val_logits, val_labels, val_mask)
-            _check_finite(val_u, epoch)
+            train_u_item = float(train_u.item())
+        del train_logits, train_focal, train_u
+        if device.type == "cuda":
+            torch.cuda.empty_cache()
+        model.eval()
+        val_logits = _eval_forward(model, bundle, val_graph, device)
+        val_logits, val_labels, val_mask = _split_logits(val_logits, val_graph)
+        val_u = masked_bce_with_logits(val_logits, val_labels, val_mask)
+        val_focal = masked_binary_focal_loss(val_logits, val_labels, val_mask)
+        _check_finite(val_u, epoch)
         history.append(
             {
                 "epoch": epoch,
-                "train_focal": float(train_focal.item()),
-                "train_bce": float(train_u.item()),
+                "train_focal": train_fl_item,
+                "train_bce": train_u_item,
                 "val_focal": float(val_focal.item()),
                 "val_bce": float(val_u.item()),
             }
         )
         print(
-            f"epoch {epoch}/{epochs} train_fl={train_focal.item():.6f} train_u={train_u.item():.6f} "
+            f"epoch {epoch}/{epochs} train_fl={train_fl_item:.6f} train_u={train_u_item:.6f} "
             f"val_fl={val_focal.item():.6f} val_u={val_u.item():.6f}",
             flush=True,
         )
@@ -457,10 +467,10 @@ def train_focal_loss(
     model.eval()
     with torch.no_grad():
         tr_logits = _forward(model, bundle, train_graph)
-        va_logits = _forward(model, bundle, val_graph)
-        te_logits = _forward(model, bundle, test_graph)
-        va_logits, va_labels, va_mask = _split_logits(va_logits, val_graph)
-        te_logits, te_labels, te_mask = _split_logits(te_logits, test_graph)
+    va_logits = _eval_forward(model, bundle, val_graph, device)
+    te_logits = _eval_forward(model, bundle, test_graph, device)
+    va_logits, va_labels, va_mask = _split_logits(va_logits, val_graph)
+    te_logits, te_labels, te_mask = _split_logits(te_logits, test_graph)
     y_tr, z_tr = _masked_numpy(tr_logits, train_graph.labels, train_graph.pair_mask)
     y_va, z_va = _masked_numpy(va_logits, va_labels, va_mask)
     y_te, z_te = _masked_numpy(te_logits, te_labels, te_mask)

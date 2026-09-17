@@ -50,6 +50,29 @@ def _forward(model: MingleModel, bundle: ProcessedBundle, graph: SplitGraph) -> 
     return logits
 
 
+def _cuda_mem(prefix: str, device: torch.device) -> None:
+    if device.type != "cuda":
+        return
+    alloc = torch.cuda.memory_allocated(device) / 1e9
+    reserved = torch.cuda.memory_reserved(device) / 1e9
+    print(f"{prefix} cuda alloc={alloc:.2f}GB reserved={reserved:.2f}GB", flush=True)
+
+
+def _eval_forward(model: MingleModel, bundle: ProcessedBundle, graph: SplitGraph, device: torch.device) -> torch.Tensor:
+    """Val/test graphs stay on CPU so backward is not fighting them for VRAM."""
+    if graph.notes.device == device:
+        with torch.no_grad():
+            return _forward(model, bundle, graph)
+    moved = _to_device(graph, device)
+    try:
+        with torch.no_grad():
+            return _forward(model, bundle, moved)
+    finally:
+        del moved
+        if device.type == "cuda":
+            torch.cuda.empty_cache()
+
+
 def _split_logits(logits: torch.Tensor, graph: SplitGraph) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     start = graph.eval_offset
     return logits[start:], graph.labels[start:], graph.pair_mask[start:]
@@ -185,14 +208,17 @@ def train_vanilla_bce(config: dict, bundle: ProcessedBundle, report_path: Path) 
         raise RuntimeError("Patient split leakage: overlapping encounter indices.")
 
     train_graph = _to_device(build_split_graph(bundle, train_idx, "train"), device)
-    val_graph = _to_device(build_eval_graph(bundle, train_idx, val_idx, "val"), device)
-    test_graph = _to_device(build_eval_graph(bundle, train_idx, test_idx, "test"), device)
+    val_graph = build_eval_graph(bundle, train_idx, val_idx, "val")
+    test_graph = build_eval_graph(bundle, train_idx, test_idx, "test")
 
     if int(train_graph.pair_mask.sum()) == 0:
         raise RuntimeError("No training pairs after split.")
 
     bundle.node_states = bundle.node_states.to(device)
     bundle.concept_semantics = bundle.concept_semantics.to(device)
+    if device.type == "cuda":
+        torch.cuda.empty_cache()
+        _cuda_mem("after train graph + embeddings", device)
 
     model = MingleModel(
         node_input_dim=int(frozen["node_input_dim"]),
@@ -226,22 +252,25 @@ def train_vanilla_bce(config: dict, bundle: ProcessedBundle, report_path: Path) 
         _check_finite(train_loss, epoch)
         train_loss.backward()
         optimizer.step()
+        train_bce = float(train_loss.item())
+        del train_logits, train_loss
+        if device.type == "cuda":
+            torch.cuda.empty_cache()
 
         model.eval()
-        with torch.no_grad():
-            val_logits = _forward(model, bundle, val_graph)
-            val_logits, val_labels, val_mask = _split_logits(val_logits, val_graph)
-            val_loss = masked_bce_with_logits(val_logits, val_labels, val_mask)
-            _check_finite(val_loss, epoch)
+        val_logits = _eval_forward(model, bundle, val_graph, device)
+        val_logits, val_labels, val_mask = _split_logits(val_logits, val_graph)
+        val_loss = masked_bce_with_logits(val_logits, val_labels, val_mask)
+        _check_finite(val_loss, epoch)
 
         history.append(
             {
                 "epoch": epoch,
-                "train_bce": float(train_loss.item()),
+                "train_bce": train_bce,
                 "val_bce": float(val_loss.item()),
             }
         )
-        print(f"epoch {epoch}/{epochs} train_bce={train_loss.item():.6f} val_bce={val_loss.item():.6f}", flush=True)
+        print(f"epoch {epoch}/{epochs} train_bce={train_bce:.6f} val_bce={val_loss.item():.6f}", flush=True)
 
         if float(val_loss.item()) < best_val:
             best_val = float(val_loss.item())
@@ -274,10 +303,10 @@ def train_vanilla_bce(config: dict, bundle: ProcessedBundle, report_path: Path) 
 
     with torch.no_grad():
         tr_logits = _forward(model, bundle, train_graph)
-        va_logits = _forward(model, bundle, val_graph)
-        te_logits = _forward(model, bundle, test_graph)
-        va_logits, va_labels, va_mask = _split_logits(va_logits, val_graph)
-        te_logits, te_labels, te_mask = _split_logits(te_logits, test_graph)
+    va_logits = _eval_forward(model, bundle, val_graph, device)
+    te_logits = _eval_forward(model, bundle, test_graph, device)
+    va_logits, va_labels, va_mask = _split_logits(va_logits, val_graph)
+    te_logits, te_labels, te_mask = _split_logits(te_logits, test_graph)
 
     y_tr, z_tr = _masked_numpy(tr_logits, train_graph.labels, train_graph.pair_mask)
     y_va, z_va = _masked_numpy(va_logits, va_labels, va_mask)
