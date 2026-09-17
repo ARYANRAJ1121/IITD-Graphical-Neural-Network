@@ -75,7 +75,11 @@ def _eval_forward(model: MingleModel, bundle: ProcessedBundle, graph: SplitGraph
 
 def _split_logits(logits: torch.Tensor, graph: SplitGraph) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     start = graph.eval_offset
-    return logits[start:], graph.labels[start:], graph.pair_mask[start:]
+    return (
+        logits[start:],
+        graph.labels[start:].to(logits.device),
+        graph.pair_mask[start:].to(logits.device),
+    )
 
 
 def _masked_numpy(logits: torch.Tensor, labels: torch.Tensor, mask: torch.Tensor) -> tuple[np.ndarray, np.ndarray]:
