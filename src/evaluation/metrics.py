@@ -71,10 +71,12 @@ def compute_metrics(y_true: np.ndarray, logits: np.ndarray, probs: np.ndarray | 
         ).mean()
     )
     n_pos_pred = int(pred.sum())
+    accuracy = float((pred == y).mean())
     return {
         "n_examples": n,
         "n_classes": c,
         "bce": bce,
+        "accuracy": accuracy,
         "micro_f1": micro_f1,
         "macro_f1": macro_f1,
         "macro_auroc": float(np.mean(defined_auroc)) if defined_auroc else None,

@@ -208,6 +208,64 @@ def write_note_ablation_report(path: Path, payload: dict) -> None:
     path.write_text("\n".join(lines), encoding="utf-8")
 
 
+def train_vanilla_note_ablation(
+    config: dict,
+    bundle: ProcessedBundle,
+    report_path: Path,
+) -> dict:
+    """Paper Table 1: MINGLE w/o clinical note semantics, vanilla BCE parent."""
+    if bundle.note_semantics.ndim != 2 or bundle.note_semantics.size(1) != 768:
+        raise RuntimeError(
+            f"Expected note semantics (E, 768); got {tuple(bundle.note_semantics.shape)}"
+        )
+    bundle.note_semantics = torch.zeros_like(bundle.note_semantics)
+    print(
+        "Paper ablation w/o N_e: notes zeroed; vanilla BCE. "
+        f"{tuple(bundle.note_semantics.shape)}. C_v / X_v unchanged.",
+        flush=True,
+    )
+    from src.training.train_vanilla_bce import train_vanilla_bce
+
+    payload = train_vanilla_bce(
+        config,
+        bundle,
+        report_path,
+        checkpoint_name="paper_note_ablation_best.pt",
+        history_name="paper_note_ablation_history.json",
+    )
+    payload["ablation"] = "zero N_e; vanilla BCE; C_v and DeepWalk unchanged"
+    t = payload["test_metrics"]
+    acc = t.get("accuracy")
+    acc_s = f"{acc:.6f}" if acc is not None else "NA"
+    report_path.write_text(
+        "\n".join(
+            [
+                "# Paper ablation: MINGLE w/o Clinical Note Semantics",
+                "",
+                "Parent = **vanilla BCE** (paper Eq. 4), same as full MINGLE. `N_e` zeroed. `C_v` and DeepWalk kept. 20 epochs.",
+                "",
+                f"- seed: `{payload['seed']}`",
+                f"- best epoch: `{payload['best_epoch']}`",
+                f"- device: `{payload['device']}`",
+                f"- checkpoint: `{payload['checkpoint']}`",
+                "",
+                "## Test",
+                "",
+                f"- ACC (Hamming @0.5): `{acc_s}`",
+                f"- macro-AUROC: `{t['macro_auroc']}`",
+                f"- macro-AUPRC: `{t['macro_auprc']}`",
+                f"- micro-F1 @0.5: `{t['micro_f1']:.4f}`",
+                f"- unweighted BCE: `{t['bce']:.6f}`",
+                "",
+                "See `experiments/paper_table1_coherent.md` for the three-row Table 1 analogue.",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    return payload
+
+
 def train_note_ablation(
     config: dict,
     bundle: ProcessedBundle,

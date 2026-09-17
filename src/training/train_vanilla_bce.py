@@ -184,7 +184,14 @@ def write_training_report(path: Path, payload: dict) -> None:
     path.write_text("\n".join(lines), encoding="utf-8")
 
 
-def train_vanilla_bce(config: dict, bundle: ProcessedBundle, report_path: Path) -> dict:
+def train_vanilla_bce(
+    config: dict,
+    bundle: ProcessedBundle,
+    report_path: Path,
+    *,
+    checkpoint_name: str = "vanilla_bce_best.pt",
+    history_name: str = "vanilla_bce_history.json",
+) -> dict:
     if bundle.source != "processed":
         raise RuntimeError("Refusing to run the baseline experiment on synthetic data.")
 
@@ -239,7 +246,7 @@ def train_vanilla_bce(config: dict, bundle: ProcessedBundle, report_path: Path) 
 
     checkpoint_dir = Path(config["training"]["checkpoint_dir"])
     checkpoint_dir.mkdir(parents=True, exist_ok=True)
-    best_path = checkpoint_dir / "vanilla_bce_best.pt"
+    best_path = checkpoint_dir / checkpoint_name
 
     epochs = int(config["training"]["epochs"])
     history = []
@@ -339,5 +346,5 @@ def train_vanilla_bce(config: dict, bundle: ProcessedBundle, report_path: Path) 
     }
     report_path.parent.mkdir(parents=True, exist_ok=True)
     write_training_report(report_path, payload)
-    (checkpoint_dir / "vanilla_bce_history.json").write_text(json.dumps(payload["history"], indent=2), encoding="utf-8")
+    (checkpoint_dir / history_name).write_text(json.dumps(payload["history"], indent=2), encoding="utf-8")
     return payload

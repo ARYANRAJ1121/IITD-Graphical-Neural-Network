@@ -37,8 +37,9 @@ Used for every training run unless a later experiment says otherwise:
 2. **Hypergraph + embeddings** — nodes, visit hyperedges, DeepWalk, BioMedBERT. Script: `src/data/construct_hypergraph.py`. Report: `experiments/hypergraph_embeddings.md`.
 3. **Vanilla BCE** — paper Eq. (4), no class weights. `python train.py`. Report: `experiments/vanilla_bce_training_report.md`.
 4. **Weighted BCE** — same model; train-only `pos_weight = n_neg/n_pos`. `python train_weighted_bce.py` (20 epochs) or `python train_weighted_bce_converge.py` (50 epochs). Reports: `experiments/weighted_bce_report.md`, `experiments/weighted_bce_convergence_report.md`.
-5. **Focal loss** — same model; γ=2, α=1 (no class weights). `python train_focal_loss.py`. **Not finished** (CPU runs were interrupted).
-6. **Note ablation** — same as weighted BCE, but `N_e` replaced with zeros. `python train_note_ablation.py`. **Not finished**.
+5. **Focal loss** — same model; γ=2, α=1 (no class weights). `python train_focal_loss.py`.
+6. **Note ablation (weighted)** — extra Coherent run: `N_e` zeros + weighted BCE. `python train_note_ablation.py`.
+7. **Paper Table 1 ablations** — vanilla BCE parent: w/o `N_e` and w/o `C_v`. `train_vanilla_note_ablation` / `python train_concept_ablation.py`. Combined report: `experiments/paper_table1_coherent.md`.
 
 ## Results so far (test)
 
